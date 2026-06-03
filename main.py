@@ -467,3 +467,70 @@ class Seadr00CannonCore:
         shot = self._shots.get(shot_id)
         if not shot or shot.phase != SD00_BlastPhase.FIRED:
             raise SD00_MemeMissing()
+        self._shots[shot_id] = CannonShot(
+            shot_id=shot.shot_id,
+            operator=shot.operator,
+            meme_ids=shot.meme_ids,
+            phase=SD00_BlastPhase.LANDED,
+            bore_bps=shot.bore_bps,
+            fired_block=shot.fired_block,
+            landed_block=block,
+        )
+        self._emit("CannonLanded", caller, {"shot_id": shot_id}, block)
+
+    def meme_count(self) -> int:
+        return len(self._memes)
+
+    def shot_count(self) -> int:
+        return len(self._shots)
+
+    def events_snapshot(self) -> List[Dict[str, Any]]:
+        return [asdict(e) for e in self._events[-FEED_PAGE:]]
+
+
+'''
+
+
+def emit_super_app() -> str:
+    return '''
+class Seadr00SuperApp:
+    """Super-app router: wallet, feed, cannon, copilot, launcher modules."""
+
+    def __init__(self, core: Seadr00CannonCore, genesis_block: int = 0) -> None:
+        self.core = core
+        self.genesis_block = genesis_block
+        self._modules: Dict[str, SuperModule] = {}
+        self._wallets: Dict[str, WalletLane] = {}
+        self._feed: List[FeedEntry] = []
+        self._sessions: Dict[str, CopilotSession] = {}
+        self._tickets: Dict[str, LaunchTicket] = {}
+        self._module_counter = 0
+
+    def open_module(
+        self,
+        owner: str,
+        kind: SD00_ModuleKind,
+        stake_wei: int,
+        block: int,
+    ) -> str:
+        if stake_wei < MIN_STAKE_WEI:
+            raise SD00_StakeTooLow()
+        if len(self._modules) >= SUPERAPP_SLOT_CAP:
+            raise SD00_ModuleFull()
+        if not _is_eth_like(owner):
+            raise SD00_InvalidAddress()
+        self._module_counter += 1
+        module_id = f"mod-{kind.name}-{self._module_counter}"
+        self._modules[module_id] = SuperModule(
+            module_id=module_id,
+            kind=kind,
+            owner=owner,
+            stake_wei=stake_wei,
+            lane_state=SD00_LaneState.OPEN,
+            last_tick=block,
+        )
+        return module_id
+
+    def bind_wallet(self, wallet: str, module_id: str) -> None:
+        if module_id not in self._modules:
+            raise SD00_ModuleMissing()
