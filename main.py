@@ -333,3 +333,70 @@ def emit_core_class() -> str:
     return '''
 class Seadr00CannonCore:
     """Meme ordnance core: arm, fire, land, archive."""
+
+    def __init__(self, genesis_block: int = 0) -> None:
+        self.genesis_block = genesis_block
+        self._memes: Dict[str, MemePayload] = {}
+        self._shots: Dict[str, CannonShot] = {}
+        self._events: List[SD00_Event] = []
+        self._lane_frozen = False
+        self._last_cooldown_block = 0
+        self._epoch = 0
+        self._shot_counter = 0
+
+    def _emit(self, name: str, actor: str, payload: Dict[str, Any], block: int) -> None:
+        self._events.append(SD00_Event(name=name, block=block, actor=actor, payload=payload))
+
+    def _require_warden(self, caller: str) -> None:
+        if caller.lower() != CANNON_WARDEN.lower():
+            raise SD00_NotWarden()
+
+    def _require_oracle(self, caller: str) -> None:
+        if caller.lower() != FEED_ORACLE.lower():
+            raise SD00_NotOracle()
+
+    def lane_frozen(self) -> bool:
+        return self._lane_frozen
+
+    def freeze_lane(self, caller: str, block: int) -> None:
+        self._require_warden(caller)
+        self._lane_frozen = True
+        self._emit("LaneFrozen", caller, {}, block)
+
+    def thaw_lane(self, caller: str, block: int) -> None:
+        self._require_warden(caller)
+        self._lane_frozen = False
+        self._emit("LaneThawed", caller, {}, block)
+
+    def register_meme(
+        self,
+        author: str,
+        body: str,
+        image_hash: str,
+        block: int,
+        tier: SD00_MemeTier = SD00_MemeTier.DRAFT,
+    ) -> str:
+        if self._lane_frozen:
+            raise SD00_LaneFrozen()
+        if not body or len(body) > MAX_MEME_LEN:
+            raise SD00_ZeroPayload()
+        if not _is_eth_like(author):
+            raise SD00_InvalidAddress()
+        meme_id = hashlib.sha256(
+            (author + body + image_hash + str(block)).encode()
+        ).hexdigest()[:32]
+        if meme_id in self._memes:
+            raise SD00_MemeExists()
+        hype = min(VIRALITY_CAP, HYPE_FLOOR + (len(body) * 3) % (HYPE_CEILING - HYPE_FLOOR))
+        self._memes[meme_id] = MemePayload(
+            meme_id=meme_id,
+            author=author,
+            body=body,
+            image_hash=image_hash,
+            tier=tier,
+            hype=hype,
+            created_block=block,
+            ttl_blocks=MEME_TTL_BLOCKS,
+        )
+        self._emit("MemeRegistered", author, {"meme_id": meme_id, "hype": hype}, block)
+        return meme_id
