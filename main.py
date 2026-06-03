@@ -400,3 +400,70 @@ class Seadr00CannonCore:
         )
         self._emit("MemeRegistered", author, {"meme_id": meme_id, "hype": hype}, block)
         return meme_id
+
+    def promote_meme(self, caller: str, meme_id: str, block: int) -> None:
+        self._require_oracle(caller)
+        m = self._memes.get(meme_id)
+        if not m:
+            raise SD00_MemeMissing()
+        if m.tier.value >= SD00_MemeTier.LEGEND.value:
+            return
+        new_tier = SD00_MemeTier(min(SD00_MemeTier.LEGEND.value, m.tier.value + 1))
+        self._memes[meme_id] = MemePayload(
+            meme_id=m.meme_id,
+            author=m.author,
+            body=m.body,
+            image_hash=m.image_hash,
+            tier=new_tier,
+            hype=min(VIRALITY_CAP, m.hype + 400),
+            created_block=m.created_block,
+            ttl_blocks=m.ttl_blocks,
+            sealed=m.sealed,
+        )
+        self._emit("MemePromoted", caller, {"meme_id": meme_id, "tier": new_tier.value}, block)
+
+    def arm_cannon(self, operator: str, meme_ids: Sequence[str], block: int) -> str:
+        if self._lane_frozen:
+            raise SD00_LaneFrozen()
+        if block - self._last_cooldown_block < COOLDOWN_TICKS:
+            raise SD00_CooldownActive()
+        if len(meme_ids) > MAX_CANNON_BATCH:
+            raise SD00_BatchOverflow()
+        for mid in meme_ids:
+            if mid not in self._memes:
+                raise SD00_MemeMissing()
+        self._shot_counter += 1
+        shot_id = f"shot-{self._shot_counter}-{block}"
+        self._shots[shot_id] = CannonShot(
+            shot_id=shot_id,
+            operator=operator,
+            meme_ids=list(meme_ids),
+            phase=SD00_BlastPhase.ARMING,
+            bore_bps=CANNON_BORE_BPS,
+            fired_block=0,
+        )
+        self._emit("CannonArmed", operator, {"shot_id": shot_id, "count": len(meme_ids)}, block)
+        return shot_id
+
+    def fire_cannon(self, operator: str, shot_id: str, block: int) -> None:
+        shot = self._shots.get(shot_id)
+        if not shot or shot.phase != SD00_BlastPhase.ARMING:
+            raise SD00_MemeMissing()
+        if shot.operator.lower() != operator.lower():
+            raise SD00_ZeroPayload()
+        self._shots[shot_id] = CannonShot(
+            shot_id=shot.shot_id,
+            operator=shot.operator,
+            meme_ids=shot.meme_ids,
+            phase=SD00_BlastPhase.FIRED,
+            bore_bps=shot.bore_bps,
+            fired_block=block,
+        )
+        self._last_cooldown_block = block
+        self._emit("CannonFired", operator, {"shot_id": shot_id}, block)
+
+    def land_shot(self, caller: str, shot_id: str, block: int) -> None:
+        self._require_oracle(caller)
+        shot = self._shots.get(shot_id)
+        if not shot or shot.phase != SD00_BlastPhase.FIRED:
+            raise SD00_MemeMissing()
