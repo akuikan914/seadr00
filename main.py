@@ -199,3 +199,70 @@ class SD00_CooldownActive(SD00_Error):
 
 
 class SD00_BatchOverflow(SD00_Error):
+    pass
+
+
+class SD00_ViralityBreach(SD00_Error):
+    pass
+
+
+class SD00_ModuleMissing(SD00_Error):
+    pass
+
+
+class SD00_ModuleFull(SD00_Error):
+    pass
+
+
+class SD00_RelayTimeout(SD00_Error):
+    pass
+
+
+class SD00_InvalidAddress(SD00_Error):
+    pass
+
+
+def _is_eth_like(addr: str) -> bool:
+    if not addr or len(addr) != 42 or not addr.startswith("0x"):
+        return False
+    body = addr[2:]
+    if len(body) != 40:
+        return False
+    try:
+        int(body, 16)
+    except ValueError:
+        return False
+    has_upper = any(c in "ABCDEF" for c in body)
+    has_lower = any(c in "abcdef" for c in body)
+    has_digit = any(c in "0123456789" for c in body)
+    return has_upper and has_lower and has_digit
+
+
+def _digest(*parts: bytes) -> bytes:
+    h = hashlib.sha256()
+    for p in parts:
+        h.update(p)
+    return h.digest()
+
+
+def _topic(name: str) -> bytes:
+    return hashlib.sha256(name.encode()).digest()[:32]
+
+
+@dataclass(frozen=True)
+class SD00_Event:
+    name: str
+    block: int
+    actor: str
+    payload: Dict[str, Any]
+
+
+@dataclass
+class MemePayload:
+    meme_id: str
+    author: str
+    body: str
+    image_hash: str
+    tier: SD00_MemeTier
+    hype: int
+    created_block: int
