@@ -266,3 +266,70 @@ class MemePayload:
     tier: SD00_MemeTier
     hype: int
     created_block: int
+    ttl_blocks: int
+    sealed: bool = False
+
+
+@dataclass
+class CannonShot:
+    shot_id: str
+    operator: str
+    meme_ids: List[str]
+    phase: SD00_BlastPhase
+    bore_bps: int
+    fired_block: int
+    landed_block: int = 0
+
+
+@dataclass
+class SuperModule:
+    module_id: str
+    kind: SD00_ModuleKind
+    owner: str
+    stake_wei: int
+    lane_state: SD00_LaneState
+    last_tick: int
+
+
+@dataclass
+class FeedEntry:
+    entry_id: str
+    meme_id: str
+    score: int
+    rank: int
+    epoch: int
+
+
+@dataclass
+class WalletLane:
+    wallet: str
+    balance_wei: int
+    nonce: int
+    linked_module: Optional[str] = None
+
+
+@dataclass
+class CopilotSession:
+    session_id: str
+    user: str
+    tokens_used: int
+    quota: int
+    started_at: float
+
+
+@dataclass
+class LaunchTicket:
+    ticket_id: str
+    pad_slot: int
+    meme_id: str
+    fee_paid: int
+    settled: bool
+
+
+'''
+
+
+def emit_core_class() -> str:
+    return '''
+class Seadr00CannonCore:
+    """Meme ordnance core: arm, fire, land, archive."""
