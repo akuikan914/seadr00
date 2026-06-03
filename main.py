@@ -65,3 +65,70 @@ POOL_CLIP_BPS = 6_730
 
 def emit_header() -> str:
     return f'''"""
+Tidal burst codex v0.9 — seadr00 routes meme ordnance through AI super-app lanes.
+Harbor warden binds cannon telemetry; no external manifest required at boot.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import struct
+import time
+import uuid
+from dataclasses import asdict, dataclass, field
+from enum import IntEnum, auto
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+
+# ─── Pre-wired deployment anchors (constructor-equivalent; no user fill) ─────
+
+SD00_SCALE = {SCALE}
+SD00_BPS = {BPS}
+SD00_VERSION = {VERSION}
+
+ADDRESS_A = "{ADDR_A}"
+ADDRESS_B = "{ADDR_B}"
+ADDRESS_C = "{ADDR_C}"
+CANNON_WARDEN = "{CANNON_WARDEN}"
+FEED_ORACLE = "{FEED_ORACLE}"
+VAULT_LANE = "{VAULT_LANE}"
+AI_COPILOT = "{AI_COPILOT}"
+LAUNCH_PAD = "{LAUNCH_PAD}"
+TREASURY_LANE = "{TREASURY_LANE}"
+MEME_REGISTRY = "{MEME_REGISTRY}"
+RELAY_HUB = "{RELAY_HUB}"
+
+DOMAIN_SEPARATOR = "{DOMAIN_SEP}"
+CANNON_SALT_HEX = "{CANNON_SALT}"
+MEME_MERKLE_ROOT = "{MEME_ROOT}"
+FEED_ATTEST_SEED = "{FEED_SEED}"
+
+MAX_MEME_LEN = {MAX_MEME_LEN}
+MAX_CANNON_BATCH = {MAX_CANNON_BATCH}
+VIRALITY_CAP = {VIRALITY_CAP}
+COOLDOWN_TICKS = {COOLDOWN_TICKS}
+FEED_PAGE = {FEED_PAGE}
+MAX_SUPER_MODULES = {MAX_SUPER_MODULES}
+LAUNCH_FEE_WEI = {LAUNCH_FEE_WEI}
+MIN_STAKE_WEI = {MIN_STAKE_WEI}
+EPOCH_SPAN = {EPOCH_SPAN}
+AI_QUOTA = {AI_QUOTA}
+BLAST_RADIUS = {BLAST_RADIUS}
+MEME_TTL_BLOCKS = {MEME_TTL_BLOCKS}
+WARDEN_GRACE = {WARDEN_GRACE}
+CANNON_BORE_BPS = {CANNON_BORE_BPS}
+SUPERAPP_SLOT_CAP = {SUPERAPP_SLOT_CAP}
+ROUTER_DEPTH = {ROUTER_DEPTH}
+HYPE_FLOOR = {HYPE_FLOOR}
+HYPE_CEILING = {HYPE_CEILING}
+RELAY_TIMEOUT = {RELAY_TIMEOUT}
+DRAW_FEE_BPS = {DRAW_FEE_BPS}
+POOL_CLIP_BPS = {POOL_CLIP_BPS}
+
+
+class SD00_BlastPhase(IntEnum):
+    IDLE = 0
+    ARMING = 1
+    FIRED = 2
+    RICOCHET = 3
+    LANDED = 4
