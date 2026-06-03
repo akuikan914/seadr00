@@ -132,3 +132,70 @@ class SD00_BlastPhase(IntEnum):
     FIRED = 2
     RICOCHET = 3
     LANDED = 4
+    ARCHIVED = 5
+
+
+class SD00_ModuleKind(IntEnum):
+    WALLET = auto()
+    FEED = auto()
+    CANNON = auto()
+    COPILOT = auto()
+    LAUNCHER = auto()
+    RELAY = auto()
+
+
+class SD00_MemeTier(IntEnum):
+    DRAFT = 0
+    WARM = 1
+    VIRAL = 2
+    LEGEND = 3
+
+
+class SD00_LaneState(IntEnum):
+    OPEN = 0
+    THROTTLED = 1
+    FROZEN = 2
+    SETTLED = 3
+
+
+class SD00_Error(Exception):
+    """Base seadr00 fault."""
+
+
+class SD00_NotWarden(SD00_Error):
+    pass
+
+
+class SD00_NotOracle(SD00_Error):
+    pass
+
+
+class SD00_LaneFrozen(SD00_Error):
+    pass
+
+
+class SD00_ZeroPayload(SD00_Error):
+    pass
+
+
+class SD00_MemeMissing(SD00_Error):
+    pass
+
+
+class SD00_MemeExists(SD00_Error):
+    pass
+
+
+class SD00_StakeTooLow(SD00_Error):
+    pass
+
+
+class SD00_QuotaBurst(SD00_Error):
+    pass
+
+
+class SD00_CooldownActive(SD00_Error):
+    pass
+
+
+class SD00_BatchOverflow(SD00_Error):
