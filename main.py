@@ -869,3 +869,61 @@ def emit_main() -> str:
 
 def _bootstrap_demo() -> Seadr00Engine:
     eng = Seadr00Engine(genesis_block=21_000_000)
+    assert eng.validate_config()
+    author = ADDRESS_A
+    block = eng.genesis_block + 100
+    eng.cannon.register_meme(author, "seadr00-genesis-meme", MEME_MERKLE_ROOT[:18], block)
+    eng.superapp.open_module(author, SD00_ModuleKind.FEED, MIN_STAKE_WEI, block)
+    return eng
+
+
+if __name__ == "__main__":
+    e = _bootstrap_demo()
+    print(json.dumps(e.full_status(), indent=2))
+'''
+
+
+def line_count_of(parts: List[str]) -> int:
+    return sum(p.count("\n") for p in parts) + len(parts)
+
+
+def build() -> None:
+    cap = min(max(TARGET_LINES, 500), 2000)
+    parts = [emit_header(), emit_core_class(), emit_super_app(), emit_facade()]
+    for name, body in HELPERS:
+        parts.append(emit_helper(name, body))
+
+    current = line_count_of(parts)
+    handlers = max(35, (cap - current - 80) // 11)
+    parts.append(emit_scenario_handlers(handlers))
+    parts.append(emit_router_table(min(ROUTER_DEPTH * 5, handlers)))
+
+    current = line_count_of(parts)
+    forge_n = max(12, (cap - current - 120) // 9)
+    parts.append(emit_meme_forge_ops(forge_n))
+    current = line_count_of(parts)
+    rank_n = max(8, (cap - current - 60) // 5)
+    parts.append(emit_feed_rankers(rank_n))
+
+    parts.append(
+        "\ndef sd00_snapshot(engine: Seadr00Engine, tag: str = 'live') -> Dict[str, Any]:\n"
+        "    return {\n"
+        "        'tag': tag,\n"
+        "        'status': engine.full_status(),\n"
+        "        'anchors_ok': sd00_validate_all_addresses(),\n"
+        "        'hex_ok': sd00_validate_hex_constants(),\n"
+        "    }\n"
+    )
+    parts.append(emit_main())
+
+    text = "\n".join(parts)
+    lines = text.count("\n") + 1
+    if lines > 2000:
+        text = "\n".join(text.splitlines()[:2000]) + "\n"
+        lines = 2000
+    OUT.write_text(text, encoding="utf-8")
+    print(f"Wrote {OUT} ({lines} lines, target {cap})")
+
+
+if __name__ == "__main__":
+    build()
