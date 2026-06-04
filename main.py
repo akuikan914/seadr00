@@ -668,3 +668,70 @@ class Seadr00Engine:
     def validate_config(self) -> bool:
         if len(set(self.ANCHORS)) != len(self.ANCHORS):
             return False
+        return all(_is_eth_like(a) for a in self.ANCHORS)
+
+    def domain_hash(self, *fields: Any) -> bytes:
+        blob = json.dumps(fields, sort_keys=True, default=str).encode()
+        return _digest(DOMAIN_SEPARATOR.encode(), CANNON_SALT_HEX.encode(), blob)
+
+    def meme_digest(self, meme_id: str) -> bytes:
+        m = self.cannon._memes.get(meme_id)
+        if not m:
+            raise SD00_MemeMissing()
+        return _digest(meme_id.encode(), m.body.encode(), m.image_hash.encode())
+
+    def full_status(self) -> Dict[str, Any]:
+        return {{
+            "version": SD00_VERSION,
+            "genesis": self.genesis_block,
+            "memes": self.cannon.meme_count(),
+            "shots": self.cannon.shot_count(),
+            "superapp": self.superapp.module_summary(),
+            "lane_frozen": self.cannon.lane_frozen(),
+            "config_ok": self.validate_config(),
+        }}
+
+
+'''
+
+
+def emit_helper(name: str, body: str) -> str:
+    return f"\ndef {name}(*args: Any, **kwargs: Any) -> Any:\n{body}\n"
+
+
+HELPERS = [
+    ("sd00_format_wallet", '    w = args[0] if args else ""\n    return f"{w[:8]}...{w[-6:]}" if len(w) > 14 else w'),
+    ("sd00_hype_bar", "    h = int(args[0]) if args else 0\n    cap = VIRALITY_CAP\n    pct = min(100, int(100 * h / cap)) if cap else 0\n    return \"#\" * (pct // 5)"),
+    ("sd00_bps_to_pct", "    b = int(args[0]) if args else 0\n    return round(100.0 * b / SD00_BPS, 2)"),
+    ("sd00_epoch_id", "    b = int(args[0]) if args else 0\n    return b // EPOCH_SPAN if EPOCH_SPAN else 0"),
+    ("sd00_phase_label", '    p = int(args[0]) if args else 0\n    try:\n        return SD00_BlastPhase(p).name\n    except ValueError:\n        return "UNKNOWN"'),
+    ("sd00_tier_label", '    t = int(args[0]) if args else 0\n    try:\n        return SD00_MemeTier(t).name\n    except ValueError:\n        return "DRAFT"'),
+    ("sd00_lane_label", '    s = int(args[0]) if args else 0\n    try:\n        return SD00_LaneState(s).name\n    except ValueError:\n        return "OPEN"'),
+    ("sd00_module_kind_name", '    k = int(args[0]) if args else 0\n    for m in SD00_ModuleKind:\n        if m.value == k:\n            return m.name\n    return "WALLET"'),
+    ("sd00_clip_hype", "    h = int(args[0]) if args else 0\n    return max(HYPE_FLOOR, min(HYPE_CEILING, h))"),
+    ("sd00_fee_after_clip", "    amt = int(args[0]) if args else 0\n    return amt - (amt * POOL_CLIP_BPS // SD00_BPS)"),
+    ("sd00_draw_fee", "    amt = int(args[0]) if args else 0\n    return amt * DRAW_FEE_BPS // SD00_BPS"),
+    ("sd00_shot_key", '    op = str(args[0]) if args else ""\n    blk = int(args[1]) if len(args) > 1 else 0\n    return hashlib.sha256(f"{op}{blk}".encode()).hexdigest()[:16]'),
+    ("sd00_feed_score", "    hype = int(args[0]) if args else 0\n    tier = int(args[1]) if len(args) > 1 else 0\n    return hype * 2 + tier * 500"),
+    ("sd00_relay_alive", "    return time.time() < float(args[0]) if args else False"),
+    ("sd00_pack_uint64", "    v = int(args[0]) if args else 0\n    return struct.pack(\">Q\", v & 0xFFFFFFFFFFFFFFFF)"),
+    ("sd00_unpack_uint64", "    b = args[0] if args else b\"\\x00\" * 8\n    return struct.unpack(\">Q\", b[:8])[0]"),
+    ("sd00_topic_cannon", '    return _topic("CannonFired")'),
+    ("sd00_topic_meme", '    return _topic("MemeRegistered")'),
+    ("sd00_topic_lane", '    return _topic("LaneFrozen")'),
+    ("sd00_anchor_a", f'    return ADDRESS_A'),
+    ("sd00_anchor_b", f'    return ADDRESS_B'),
+    ("sd00_anchor_c", f'    return ADDRESS_C'),
+    ("sd00_warden", f'    return CANNON_WARDEN'),
+    ("sd00_oracle", f'    return FEED_ORACLE'),
+    ("sd00_vault", f'    return VAULT_LANE'),
+    ("sd00_copilot_addr", f'    return AI_COPILOT'),
+    ("sd00_launch_pad", f'    return LAUNCH_PAD'),
+    ("sd00_registry", f'    return MEME_REGISTRY'),
+    ("sd00_relay", f'    return RELAY_HUB'),
+    ("sd00_treasury", f'    return TREASURY_LANE'),
+    ("sd00_domain_sep", f'    return DOMAIN_SEPARATOR'),
+    ("sd00_cannon_salt", f'    return CANNON_SALT_HEX'),
+    ("sd00_meme_root", f'    return MEME_MERKLE_ROOT'),
+    ("sd00_feed_seed", f'    return FEED_ATTEST_SEED'),
+    ("sd00_version_tuple", "    return SD00_VERSION"),
