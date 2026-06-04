@@ -534,3 +534,70 @@ class Seadr00SuperApp:
     def bind_wallet(self, wallet: str, module_id: str) -> None:
         if module_id not in self._modules:
             raise SD00_ModuleMissing()
+        if wallet not in self._wallets:
+            self._wallets[wallet] = WalletLane(wallet=wallet, balance_wei=0, nonce=0)
+        lane = self._wallets[wallet]
+        self._wallets[wallet] = WalletLane(
+            wallet=lane.wallet,
+            balance_wei=lane.balance_wei,
+            nonce=lane.nonce + 1,
+            linked_module=module_id,
+        )
+
+    def deposit_wei(self, wallet: str, amount: int) -> None:
+        if amount <= 0:
+            raise SD00_ZeroPayload()
+        if wallet not in self._wallets:
+            self._wallets[wallet] = WalletLane(wallet=wallet, balance_wei=0, nonce=0)
+        lane = self._wallets[wallet]
+        self._wallets[wallet] = WalletLane(
+            wallet=lane.wallet,
+            balance_wei=lane.balance_wei + amount,
+            nonce=lane.nonce,
+            linked_module=lane.linked_module,
+        )
+
+    def push_feed(self, meme_id: str, score: int, epoch: int) -> str:
+        entry_id = hashlib.sha256(f"{meme_id}{score}{epoch}".encode()).hexdigest()[:24]
+        rank = len(self._feed) + 1
+        self._feed.append(
+            FeedEntry(entry_id=entry_id, meme_id=meme_id, score=score, rank=rank, epoch=epoch)
+        )
+        self._feed.sort(key=lambda e: e.score, reverse=True)
+        for i, e in enumerate(self._feed[:FEED_PAGE]):
+            self._feed[i] = FeedEntry(
+                entry_id=e.entry_id,
+                meme_id=e.meme_id,
+                score=e.score,
+                rank=i + 1,
+                epoch=e.epoch,
+            )
+        return entry_id
+
+    def start_copilot(self, user: str) -> str:
+        if not _is_eth_like(user):
+            raise SD00_InvalidAddress()
+        sid = str(uuid.uuid4())
+        self._sessions[sid] = CopilotSession(
+            session_id=sid,
+            user=user,
+            tokens_used=0,
+            quota=AI_QUOTA,
+            started_at=time.time(),
+        )
+        return sid
+
+    def consume_copilot_tokens(self, session_id: str, n: int) -> int:
+        s = self._sessions.get(session_id)
+        if not s:
+            raise SD00_ModuleMissing()
+        if s.tokens_used + n > s.quota:
+            raise SD00_QuotaBurst()
+        self._sessions[session_id] = CopilotSession(
+            session_id=s.session_id,
+            user=s.user,
+            tokens_used=s.tokens_used + n,
+            quota=s.quota,
+            started_at=s.started_at,
+        )
+        return s.quota - s.tokens_used - n
