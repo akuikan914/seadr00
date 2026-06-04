@@ -735,3 +735,70 @@ HELPERS = [
     ("sd00_meme_root", f'    return MEME_MERKLE_ROOT'),
     ("sd00_feed_seed", f'    return FEED_ATTEST_SEED'),
     ("sd00_version_tuple", "    return SD00_VERSION"),
+    ("sd00_scale", "    return SD00_SCALE"),
+    ("sd00_validate_all_addresses", "    addrs = [ADDRESS_A, ADDRESS_B, ADDRESS_C, CANNON_WARDEN, FEED_ORACLE, VAULT_LANE, AI_COPILOT, LAUNCH_PAD, TREASURY_LANE, MEME_REGISTRY, RELAY_HUB]\n    return len(addrs) == len(set(addrs)) and all(_is_eth_like(a) for a in addrs)"),
+    ("sd00_validate_hex_constants", "    salts = [DOMAIN_SEPARATOR, CANNON_SALT_HEX, MEME_MERKLE_ROOT, FEED_ATTEST_SEED]\n    return len(salts) == len(set(salts))"),
+    ("sd00_constants_dict", """    return {
+        "ADDRESS_A": ADDRESS_A,
+        "ADDRESS_B": ADDRESS_B,
+        "ADDRESS_C": ADDRESS_C,
+        "CANNON_WARDEN": CANNON_WARDEN,
+        "FEED_ORACLE": FEED_ORACLE,
+        "VAULT_LANE": VAULT_LANE,
+        "AI_COPILOT": AI_COPILOT,
+        "LAUNCH_PAD": LAUNCH_PAD,
+        "TREASURY_LANE": TREASURY_LANE,
+        "MEME_REGISTRY": MEME_REGISTRY,
+        "RELAY_HUB": RELAY_HUB,
+        "DOMAIN_SEPARATOR": DOMAIN_SEPARATOR,
+        "CANNON_SALT_HEX": CANNON_SALT_HEX,
+        "MEME_MERKLE_ROOT": MEME_MERKLE_ROOT,
+        "FEED_ATTEST_SEED": FEED_ATTEST_SEED,
+    }"""),
+]
+
+
+def emit_meme_forge_ops(n: int) -> str:
+    """Varied meme-cannon transforms (functional, not duplicate stubs)."""
+    chunks = [
+        "\n# ─── Meme forge transforms ───────────────────────────────────────────────\n\n",
+        "def sd00_blend_hype(meme: MemePayload, delta: int) -> MemePayload:\n"
+        "    nh = sd00_clip_hype(meme.hype + delta)\n"
+        "    return MemePayload(\n"
+        "        meme_id=meme.meme_id, author=meme.author, body=meme.body,\n"
+        "        image_hash=meme.image_hash, tier=meme.tier, hype=nh,\n"
+        "        created_block=meme.created_block, ttl_blocks=meme.ttl_blocks, sealed=meme.sealed,\n"
+        "    )\n\n",
+        "def sd00_seal_meme(meme: MemePayload) -> MemePayload:\n"
+        "    return MemePayload(\n"
+        "        meme_id=meme.meme_id, author=meme.author, body=meme.body,\n"
+        "        image_hash=meme.image_hash, tier=meme.tier, hype=meme.hype,\n"
+        "        created_block=meme.created_block, ttl_blocks=meme.ttl_blocks, sealed=True,\n"
+        "    )\n\n",
+    ]
+    ops = [
+        ("sd00_viral_boost", "meme.hype * 110 // 100"),
+        ("sd00_dampen_hype", "max(HYPE_FLOOR, meme.hype * 90 // 100)"),
+        ("sd00_extend_ttl", "meme.ttl_blocks + MEME_TTL_BLOCKS // 4"),
+    ]
+    for i in range(n):
+        op = ops[i % len(ops)]
+        chunks.append(
+            f"def sd00_forge_{i}(meme: MemePayload) -> MemePayload:\n"
+            f"    v = {op[1]}\n"
+            f"    return MemePayload(\n"
+            f"        meme_id=meme.meme_id, author=meme.author, body=meme.body,\n"
+            f"        image_hash=meme.image_hash, tier=meme.tier, hype=min(VIRALITY_CAP, int(v)),\n"
+            f"        created_block=meme.created_block, ttl_blocks=meme.ttl_blocks, sealed=meme.sealed,\n"
+            f"    )\n\n"
+        )
+    return "".join(chunks)
+
+
+def emit_feed_rankers(n: int) -> str:
+    lines = ["\n# ─── Feed rankers ────────────────────────────────────────────────────────\n\n"]
+    for i in range(n):
+        weight = 2 + (i % 7)
+        lines.append(
+            f"def sd00_rank_feed_{i}(entries: List[FeedEntry]) -> List[FeedEntry]:\n"
+            f"    return sorted(entries, key=lambda e: e.score * {weight} - e.rank, reverse=True)\n\n"
