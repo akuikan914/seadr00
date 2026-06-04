@@ -802,3 +802,70 @@ def emit_feed_rankers(n: int) -> str:
         lines.append(
             f"def sd00_rank_feed_{i}(entries: List[FeedEntry]) -> List[FeedEntry]:\n"
             f"    return sorted(entries, key=lambda e: e.score * {weight} - e.rank, reverse=True)\n\n"
+        )
+    return "".join(lines)
+
+
+def emit_scenario_handlers(n: int) -> str:
+    lines = ["\n# ─── Scenario handlers (meme cannon super-app flows) ─────────────────────\n"]
+    templates = [
+        ('def sd00_scenario_register_and_blast_{i}(engine: Seadr00Engine, author: str, block: int) -> Dict[str, Any]:\n'
+         '    mid = engine.cannon.register_meme(author, "meme-{i}-payload", "0ximg{i}", block)\n'
+         '    shot = engine.cannon.arm_cannon(author, [mid], block + 1)\n'
+         '    engine.cannon.fire_cannon(CANNON_WARDEN, shot, block + 2)\n'
+         '    engine.cannon.land_shot(FEED_ORACLE, shot, block + 3)\n'
+         '    engine.superapp.push_feed(mid, sd00_feed_score(engine.cannon._memes[mid].hype, 1), block // EPOCH_SPAN)\n'
+         '    return {{"meme_id": mid, "shot_id": shot}}\n'),
+        ('def sd00_scenario_super_module_{i}(engine: Seadr00Engine, owner: str, block: int) -> str:\n'
+         '    mod = engine.superapp.open_module(owner, SD00_ModuleKind.CANNON, MIN_STAKE_WEI + {j}, block)\n'
+         '    engine.superapp.bind_wallet(owner, mod)\n'
+         '    return mod\n'),
+        ('def sd00_scenario_copilot_{i}(engine: Seadr00Engine, user: str) -> Dict[str, Any]:\n'
+         '    sid = engine.superapp.start_copilot(user)\n'
+         '    left = engine.superapp.consume_copilot_tokens(sid, 128 + {k})\n'
+         '    return {{"session": sid, "remaining": left}}\n'),
+        ('def sd00_scenario_launch_{i}(engine: Seadr00Engine, author: str, block: int) -> str:\n'
+         '    mid = engine.cannon.register_meme(author, "launch-{i}", "0xL{i}", block)\n'
+         '    tid = engine.superapp.buy_launch_ticket(mid, {slot} % MAX_SUPER_MODULES)\n'
+         '    engine.superapp.settle_ticket(tid)\n'
+         '    return tid\n'),
+    ]
+    idx = 0
+    while len(lines) < n + 5:
+        t = templates[idx % len(templates)]
+        j = 1000 + idx * 17
+        k = 64 + idx * 3
+        slot = idx % 7
+        body = t.format(i=idx, j=j, k=k, slot=slot)
+        lines.append(body + "\n")
+        idx += 1
+    return "".join(lines)
+
+
+def emit_router_table(n: int) -> str:
+    lines = ["\nSD00_ROUTER_TABLE: Dict[str, Callable[..., Any]] = {\n"]
+    for i in range(n):
+        key = f"route_{i}"
+        if i % 4 == 0:
+            fn = f"sd00_scenario_register_and_blast_{i}"
+        elif i % 4 == 1:
+            fn = f"sd00_scenario_super_module_{i}"
+        elif i % 4 == 2:
+            fn = f"sd00_scenario_copilot_{i}"
+        else:
+            fn = f"sd00_scenario_launch_{i}"
+        lines.append(f'    "{key}": {fn},\n')
+    lines.append("}\n\n")
+    lines.append("def sd00_dispatch(route: str, engine: Seadr00Engine, *args: Any, **kwargs: Any) -> Any:\n")
+    lines.append("    fn = SD00_ROUTER_TABLE.get(route)\n")
+    lines.append("    if not fn:\n")
+    lines.append('        raise SD00_ModuleMissing(f"unknown route {route}")\n')
+    lines.append("    return fn(engine, *args, **kwargs)\n")
+    return "".join(lines)
+
+
+def emit_main() -> str:
+    return '''
+
+def _bootstrap_demo() -> Seadr00Engine:
+    eng = Seadr00Engine(genesis_block=21_000_000)
